@@ -27,7 +27,8 @@ import {
   getPause,
   getSelection,
   getFileSearchQueryState,
-  getFileSearchModifierState
+  getFileSearchModifierState,
+  getSymbols
 } from "../../selectors";
 
 import getInScopeLines from "../../selectors/linesInScope";
@@ -58,6 +59,9 @@ const ColumnBreakpoint = createFactory(_ColumnBreakpoint);
 
 import _HitMarker from "./HitMarker";
 const HitMarker = createFactory(_HitMarker);
+
+import _CallSites from "./CallSites";
+const CallSites = createFactory(_CallSites);
 
 import {
   getDocument,
@@ -109,7 +113,8 @@ class Editor extends PureComponent {
     this.lastJumpLine = null;
 
     this.state = {
-      highlightedLineRange: null
+      highlightedLineRange: null,
+      showCallSites: false
     };
 
     const self: any = this;
@@ -187,6 +192,7 @@ class Editor extends PureComponent {
     // Set code editor wrapper to be focusable
     codeMirrorWrapper.tabIndex = 0;
     codeMirrorWrapper.addEventListener("keydown", e => this.onKeyDown(e));
+    codeMirrorWrapper.addEventListener("keyup", e => this.onKeyUp(e));
     codeMirrorWrapper.addEventListener("mouseover", e => this.onMouseOver(e));
     codeMirrorWrapper.addEventListener("click", e => this.onTokenClick(e));
 
@@ -295,11 +301,29 @@ class Editor extends PureComponent {
     }
   }
 
+  onKeyUp(e) {
+    let { key } = e;
+
+    if (key === "Alt") {
+      e.stopPropagation();
+      e.preventDefault();
+
+      this.setState({ showCallSites: false });
+    }
+  }
+
   onKeyDown(e) {
     const { codeMirror } = this.editor;
     let { key, target } = e;
     let codeWrapper = codeMirror.getWrapperElement();
     let textArea = codeWrapper.querySelector("textArea");
+
+    if (key === "Alt") {
+      e.stopPropagation();
+      e.preventDefault();
+
+      this.setState({ showCallSites: true });
+    }
 
     if (key === "Escape" && target == textArea) {
       e.stopPropagation();
@@ -792,6 +816,19 @@ class Editor extends PureComponent {
     );
   }
 
+  renderCallSites() {
+    const editor = this.editor;
+    const { symbols, breakpoints } = this.props;
+    const callSites = symbols.callExpressions;
+    const { showCallSites } = this.state;
+
+    if (!callSites || !showCallSites || !breakpoints) {
+      return;
+    }
+    breakpoints = breakpoints.toJS();
+    return CallSites({ editor, callSites, breakpoints });
+  }
+
   render() {
     const {
       selectSource,
@@ -803,10 +840,13 @@ class Editor extends PureComponent {
       horizontal
     } = this.props;
 
+    const { showCallSites } = this.state;
+
     return dom.div(
       {
         className: classnames("editor-wrapper", {
           "coverage-on": coverageOn,
+          "call-sites": showCallSites,
           paused: !!pauseData && isEnabled("highlightScopeLines")
         })
       },
@@ -827,7 +867,8 @@ class Editor extends PureComponent {
       this.renderInScopeLines(),
       this.renderHitCounts(),
       Footer({ editor: this.editor, horizontal }),
-      this.renderPreview()
+      this.renderPreview(),
+      this.renderCallSites()
     );
   }
 }
@@ -901,7 +942,8 @@ export default connect(
       query: getFileSearchQueryState(state),
       searchModifiers: getFileSearchModifierState(state),
       linesInScope: getInScopeLines(state),
-      selection: getSelection(state)
+      selection: getSelection(state),
+      symbols: getSymbols(state, selectedSource && selectedSource.toJS())
     };
   },
   dispatch => bindActionCreators(actions, dispatch)

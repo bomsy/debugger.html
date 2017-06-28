@@ -1,0 +1,6 @@
+.call-site {
+  background: #f0f9ff;
+  height: calc(100% -1px);
+  border-bottom: 1px solid #aed3ef;
+  cursor: pointer;
+}

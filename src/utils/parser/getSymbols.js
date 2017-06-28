@@ -69,6 +69,7 @@ export default function getSymbols(source: SourceText): SymbolDeclarations {
   let symbols = {
     functions: [],
     variables: [],
+    callExpressions: [],
     memberExpressions: [],
     objectProperties: [],
     identifiers: []
@@ -115,6 +116,19 @@ export default function getSymbols(source: SourceText): SymbolDeclarations {
         });
       }
 
+      if (t.isCallExpression(path)) {
+        const callee = path.node.callee;
+        const calleeNode = t.isMemberExpression(callee)
+          ? callee.property
+          : callee;
+
+        const { start, end, identifierName } = calleeNode.loc;
+        symbols.callExpressions.push({
+          name: identifierName,
+          location: { start, end }
+        });
+      }
+
       if (t.isIdentifier(path)) {
         const { start, end } = path.node.loc;
 
@@ -152,10 +166,6 @@ function extendSnippet(
   const prevComputed = prevPath && prevPath.node.computed;
   const prevArray = t.isArrayExpression(prevPath);
   const array = t.isArrayExpression(path);
-
-  // if (!name) {
-  //   return expression;
-  // }
 
   if (expression === "") {
     if (computed) {
@@ -292,6 +302,7 @@ export function formatSymbols(source: SourceText) {
   const {
     objectProperties,
     memberExpressions,
+    callExpressions,
     identifiers,
     variables
   } = getSymbols(source);
@@ -323,6 +334,9 @@ export function formatSymbols(source: SourceText) {
 
     "member expressions",
     memberExpressions.map(summarize).join("\n"),
+
+    "call expressions",
+    callExpressions.map(summarize).join("\n"),
 
     "identifiers",
     identifiers.map(summarize).join("\n"),

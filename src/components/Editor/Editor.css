@@ -5,6 +5,10 @@
   --editor-second-searchbar-height: 27px;
 }
 
+.call-sites {
+  outline: 1px solid #aed3ef;
+}
+
 .theme-dark .editor-wrapper {
   --debug-expression-background: rgb(73, 82, 103);
   --debug-line-border: rgb(119, 134, 162);
