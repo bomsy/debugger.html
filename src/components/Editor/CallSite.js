@@ -11,7 +11,9 @@ type MarkerType = {
 export default class CallSite extends Component {
   props: {
     callSite: Object,
-    editor: Object
+    editor: Object,
+    breakpoint: Object,
+    showCallSite: Boolean
   };
 
   addCallSite: Function;
@@ -23,36 +25,66 @@ export default class CallSite extends Component {
     this.marker = undefined;
     const self: any = this;
     self.addCallSite = this.addCallSite.bind(this);
+    self.clearCallSite = this.clearCallSite.bind(this);
   }
 
-  addCallSite() {
-    const { editor, callSite, breakpoint } = this.props;
-    const className = breakpoint ? "call-site" : "call-site-bp";
+  addCallSite(props) {
+    const { editor, callSite, breakpoint } = props;
+    const className = !breakpoint ? "call-site" : "call-site-bp";
     this.marker = markText(editor, className, callSite.location);
   }
+
+  clearCallSite() {
+    if (this.marker) {
+      this.marker.clear();
+      this.marker = null;
+    }
+  }
+
   shouldComponentUpdate(nextProps: any) {
     return this.props.editor !== nextProps.editor;
   }
 
   componentDidMount() {
-    if (!this.props.editor) {
+    const { breakpoint, editor, showCallSite } = this.props;
+    if (!editor) {
       return;
     }
 
-    this.addCallSite();
+    if (!breakpoint && !showCallSite) {
+      return;
+    }
+
+    this.addCallSite(this.props);
   }
 
-  componentDidUpdate() {
-    if (this.marker) {
-      this.marker.clear();
+  componentWillReceiveProps(nextProps) {
+    const { breakpoint, showCallSite } = this.props;
+
+    if (nextProps.breakpoint !== breakpoint) {
+      if (this.marker) {
+        this.marker.clear();
+      }
+      this.addCallSite(nextProps);
     }
-    this.addCallSite();
+    if (nextProps.showCallSite !== showCallSite) {
+      if (nextProps.showCallSite) {
+        if (!this.marker) {
+          this.addCallSite(nextProps);
+        }
+      } else {
+        if (!nextProps.breakpoint) {
+          this.clearCallSite();
+        }
+      }
+      console.log(nextProps.showCallSite);
+    }
   }
+
   componentWillUnmount() {
     if (!this.props.editor || !this.marker) {
       return;
     }
-
     this.marker.clear();
   }
 

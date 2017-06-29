@@ -4,3 +4,8 @@
   border-bottom: 1px solid #aed3ef;
   cursor: pointer;
 }
+
+.call-site-bp {
+  border-bottom: 2px solid #f00;
+  cursor: pointer;
+}

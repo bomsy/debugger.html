@@ -194,7 +194,6 @@ class Editor extends PureComponent {
     codeMirrorWrapper.addEventListener("keydown", e => this.onKeyDown(e));
     codeMirrorWrapper.addEventListener("keyup", e => this.onKeyUp(e));
     codeMirrorWrapper.addEventListener("mouseover", e => this.onMouseOver(e));
-    codeMirrorWrapper.addEventListener("click", e => this.onTokenClick(e));
 
     const toggleFoldMarkerVisibility = e => {
       if (node instanceof HTMLElement) {
@@ -356,20 +355,6 @@ class Editor extends PureComponent {
 
   onScroll() {
     this.clearPreviewSelection();
-  }
-
-  onTokenClick(e) {
-    const { target } = e;
-    if (
-      !isEnabled("columnBreakpoints") ||
-      !e.altKey ||
-      !target.parentElement.closest(".CodeMirror-line")
-    ) {
-      return;
-    }
-
-    const { line, column } = getTokenLocation(this.editor.codeMirror, target);
-    this.toggleBreakpoint(line - 1, column - 1);
   }
 
   onSearchAgain(_, e) {
@@ -708,7 +693,7 @@ class Editor extends PureComponent {
         })
       );
 
-    const columnBreakpointBookmarks = breakpoints
+    /*const columnBreakpointBookmarks = breakpoints
       .valueSeq()
       .filter(b => (isEnabled("columnBreakpoints") ? b.location.column : false))
       .map(bp =>
@@ -717,9 +702,9 @@ class Editor extends PureComponent {
           breakpoint: bp,
           editor: this.editor && this.editor.codeMirror
         })
-      );
+      );*/
 
-    return breakpointMarkers.concat(columnBreakpointBookmarks);
+    return breakpointMarkers;
   }
 
   renderHitCounts() {
@@ -818,15 +803,11 @@ class Editor extends PureComponent {
 
   renderCallSites() {
     const editor = this.editor;
-    const { symbols, breakpoints } = this.props;
-    const callSites = symbols.callExpressions;
-    const { showCallSites } = this.state;
-
-    if (!callSites || !showCallSites || !breakpoints) {
-      return;
+    if (!editor) {
+      return null;
     }
-    breakpoints = breakpoints.toJS();
-    return CallSites({ editor, callSites, breakpoints });
+    const { showCallSites } = this.state;
+    return CallSites({ editor, showCallSites });
   }
 
   render() {
@@ -942,8 +923,7 @@ export default connect(
       query: getFileSearchQueryState(state),
       searchModifiers: getFileSearchModifierState(state),
       linesInScope: getInScopeLines(state),
-      selection: getSelection(state),
-      symbols: getSymbols(state, selectedSource && selectedSource.toJS())
+      selection: getSelection(state)
     };
   },
   dispatch => bindActionCreators(actions, dispatch)
