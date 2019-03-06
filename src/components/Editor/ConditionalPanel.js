@@ -10,11 +10,13 @@ import classNames from "classnames";
 import "./ConditionalPanel.css";
 import { toEditorLine } from "../../utils/editor";
 import actions from "../../actions";
+import { debounce } from "lodash";
 
 import {
   getBreakpointForLocation,
   getConditionalPanelLocation,
-  getLogPointStatus
+  getLogPointStatus,
+  getAutocompleteMatchset
 } from "../../selectors";
 
 import type { SourceLocation } from "../../types";
@@ -26,7 +28,10 @@ type Props = {
   log: boolean,
   editor: Object,
   openConditionalPanel: typeof actions.openConditionalPanel,
-  closeConditionalPanel: typeof actions.closeConditionalPanel
+  closeConditionalPanel: typeof actions.closeConditionalPanel,
+  autocomplete: typeof actions.autocomplete,
+  clearAutocomplete: typeof actions.clearAutocomplete,
+  autocompleteMatches: string[]
 };
 
 export class ConditionalPanel extends PureComponent<Props> {
@@ -89,6 +94,17 @@ export class ConditionalPanel extends PureComponent<Props> {
     }
   };
 
+  handleChange = (e: SyntheticInputEvent<HTMLInputElement>) => {
+    const target = e.target;
+    this.findAutocompleteMatches(target.value, target.selectionStart);
+    this.setState({ inputValue: target.value });
+  };
+
+  findAutocompleteMatches = debounce((value, selectionStart) => {
+    const { autocomplete } = this.props;
+    autocomplete(value, selectionStart);
+  }, 250);
+
   componentWillMount() {
     return this.renderToWidget(this.props);
   }
@@ -144,6 +160,20 @@ export class ConditionalPanel extends PureComponent<Props> {
     }
   }
 
+  renderAutoComplete() {
+    const { autocompleteMatches } = this.props;
+    if (autocompleteMatches) {
+      return (
+        <datalist id="conditional-autocomplete-matches">
+          {autocompleteMatches.map((match, index) => {
+            return <option key={index} value={match} />;
+          })}
+        </datalist>
+      );
+    }
+    return <datalist id="conditional-autocomplete-matches" />;
+  }
+
   renderConditionalPanel(props: Props) {
     const { breakpoint, log, editor } = props;
     const options = (breakpoint && breakpoint.options) || {};
@@ -162,6 +192,8 @@ export class ConditionalPanel extends PureComponent<Props> {
         <div className="prompt">»</div>
         <input
           defaultValue={condition}
+          list="conditional-autocomplete-matches"
+          onChange={this.handleChange}
           ref={input => {
             const codeMirror = editor.CodeMirror.fromTextArea(input, {
               mode: "javascript",
@@ -184,6 +216,7 @@ export class ConditionalPanel extends PureComponent<Props> {
             codeMirror.setCursor(codeMirror.lineCount(), 0);
           }}
         />
+        {this.renderAutoComplete()}
       </div>,
       panel
     );
@@ -197,27 +230,22 @@ export class ConditionalPanel extends PureComponent<Props> {
 
 const mapStateToProps = state => {
   const location = getConditionalPanelLocation(state);
-  const log = getLogPointStatus(state);
+
   return {
+    autocompleteMatches: getAutocompleteMatchset(state),
     breakpoint: getBreakpointForLocation(state, location),
-    location,
-    log
+    log: getLogPointStatus(state),
+    location
   };
-};
-
-const {
-  setBreakpointOptions,
-  openConditionalPanel,
-  closeConditionalPanel
-} = actions;
-
-const mapDispatchToProps = {
-  setBreakpointOptions,
-  openConditionalPanel,
-  closeConditionalPanel
 };
 
 export default connect(
   mapStateToProps,
-  mapDispatchToProps
+  {
+    setBreakpointOptions: actions.setBreakpointOptions,
+    openConditionalPanel: actions.openConditionalPanel,
+    closeConditionalPanel: actions.closeConditionalPanel,
+    autocomplete: actions.autocomplete,
+    clearAutocomplete: actions.clearAutocomplete
+  }
 )(ConditionalPanel);
